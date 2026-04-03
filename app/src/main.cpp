@@ -2,12 +2,16 @@
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 
-#define SLEEP_TIME_MS 1000
+#define SLEEP_TIME_MS 400
 
 /* The devicetree node identifier for the "led0" alias. */
-#define LED_NODE DT_ALIAS(led0)
 
-static const struct gpio_dt_spec led = GPIO_DT_SPEC_GET(LED_NODE, gpios);
+static const struct gpio_dt_spec led[] = {
+    GPIO_DT_SPEC_GET(DT_ALIAS(led0), gpios),
+    GPIO_DT_SPEC_GET(DT_ALIAS(led1), gpios),
+    GPIO_DT_SPEC_GET(DT_ALIAS(led2), gpios),
+    GPIO_DT_SPEC_GET(DT_ALIAS(led3), gpios),
+};
 
 LOG_MODULE_REGISTER(main, LOG_LEVEL_INF);
 
@@ -15,12 +19,16 @@ int main(void)
 {
     bool led_state = true;
 
-    if (!gpio_is_ready_dt(&led)) return 0;
-
-    if (gpio_pin_configure_dt(&led, GPIO_OUTPUT_ACTIVE) < 0) return 0;
+    for(size_t i = 0; i < ARRAY_SIZE(led); i++) {
+        if (!gpio_is_ready_dt(&led[i])) return 0;
+        if (gpio_pin_configure_dt(&led[i], GPIO_OUTPUT_ACTIVE) < 0) return 0;
+    }
 
     while (1) {
-        if (gpio_pin_toggle_dt(&led) < 0) return 0;
+        for(size_t i = 0; i < ARRAY_SIZE(led); i++) {
+            if (gpio_pin_toggle_dt(&led[i]) < 0) return 0;
+            k_msleep(SLEEP_TIME_MS/4);
+        }
 
         led_state = !led_state;
         LOG_INF("LED state: %s", led_state ? "ON" : "OFF");
